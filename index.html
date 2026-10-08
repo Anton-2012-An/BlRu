@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="icon" href="data:,">
     <title>NIGHTMARE EMPIRE</title>
     <style>
         /* ============================================================
@@ -1396,13 +1397,11 @@ function showToast(title, text, type = 'info') {
     const toast = document.createElement('div');
     toast.className = 'toast';
     const isDanger = type === 'danger';
-    toast.innerHTML = `
-        <div class="toast-content">
-            <div class="toast-title ${isDanger ? 'danger' : 'success'}">${title}</div>
-            <div class="toast-text">${text}</div>
-        </div>
-        <button class="toast-close" onclick="this.parentElement.remove()">✕</button>
-    `;
+    toast.innerHTML = '<div class="toast-content">' +
+        '<div class="toast-title ' + (isDanger ? 'danger' : 'success') + '">' + title + '</div>' +
+        '<div class="toast-text">' + text + '</div>' +
+    '</div>' +
+    '<button class="toast-close" onclick="this.parentElement.remove()">✕</button>';
     container.appendChild(toast);
     setTimeout(() => { if (toast.parentElement) toast.remove(); }, 6000);
 }
@@ -1887,21 +1886,22 @@ function loadViolations(user) {
         container.innerHTML = '<p style="color:var(--text-muted);">Нет нарушений</p>';
         return;
     }
-    const sorted = [...violations].sort((a, b) => {
+    const sorted = violations.slice().sort(function(a, b) {
         if (a.resolved !== b.resolved) return a.resolved ? 1 : -1;
         return new Date(b.date) - new Date(a.date);
     });
     let html = '';
-    sorted.forEach(v => {
-        html += `
-            <div class="violation-item ${v.resolved ? 'resolved' : ''}">
-                <div class="v-date">${formatDate(v.date)}</div>
-                <div class="v-type">${v.resolved ? '✅ СНЯТО' : '⚠️'} ${v.type || 'Нарушение'}</div>
-                <div class="v-desc">${v.description || 'Нет описания'}</div>
-                <div class="v-meta">Выдал: ${v.issuedByNick || v.issuedBy || 'Неизвестен'}</div>
-                ${v.resolved ? `<div class="v-resolved">Снято (${formatDate(v.resolvedDate)}) — ${v.resolutionReason || 'Причина не указана'}</div>` : ''}
-            </div>
-        `;
+    sorted.forEach(function(v) {
+        const resolvedHtml = v.resolved
+            ? '<div class="v-resolved">Снято (' + formatDate(v.resolvedDate) + ') — ' + (v.resolutionReason || 'Причина не указана') + '</div>'
+            : '';
+        html += '<div class="violation-item ' + (v.resolved ? 'resolved' : '') + '">' +
+            '<div class="v-date">' + formatDate(v.date) + '</div>' +
+            '<div class="v-type">' + (v.resolved ? '✅ СНЯТО' : '⚠️') + ' ' + (v.type || 'Нарушение') + '</div>' +
+            '<div class="v-desc">' + (v.description || 'Нет описания') + '</div>' +
+            '<div class="v-meta">Выдал: ' + (v.issuedByNick || v.issuedBy || 'Неизвестен') + '</div>' +
+            resolvedHtml +
+        '</div>';
     });
     container.innerHTML = html;
 }
@@ -2031,21 +2031,20 @@ function loadUserRequests() {
     }
     let html = '';
     userRequests.sort((a, b) => new Date(b.date || b.requestDate) - new Date(a.date || a.requestDate));
-    userRequests.forEach(r => {
+    userRequests.forEach(function(r) {
         const statusText = r.status === 'pending' ? '⏳ Ожидает' : r.status === 'approved' ? '✅ Одобрена' : '❌ Отклонена';
         const statusColor = r.status === 'pending' ? '#ffaa00' : r.status === 'approved' ? 'var(--success-color)' : 'var(--danger-color)';
         const typeText = r.type === 'remove' ? 'Снятие нарушения' : 'Выдача нарушения';
-        html += `
-            <div class="request-item">
-                <div style="display:flex; justify-content:space-between; flex-wrap:wrap;">
-                    <span style="color:var(--text-primary);">${typeText}</span>
-                    <span style="color:${statusColor};">${statusText}</span>
-                </div>
-                <div class="req-text">${r.type === 'remove' ? r.reason : r.reason}</div>
-                <div class="req-meta">${formatDate(r.date || r.requestDate)}</div>
-                ${r.response ? `<div class="req-text" style="color:var(--text-muted);">Ответ: ${r.response}</div>` : ''}
-            </div>
-        `;
+        const responseHtml = r.response ? '<div class="req-text" style="color:var(--text-muted);">Ответ: ' + r.response + '</div>' : '';
+        html += '<div class="request-item">' +
+            '<div style="display:flex; justify-content:space-between; flex-wrap:wrap;">' +
+                '<span style="color:var(--text-primary);">' + typeText + '</span>' +
+                '<span style="color:' + statusColor + ';">' + statusText + '</span>' +
+            '</div>' +
+            '<div class="req-text">' + r.reason + '</div>' +
+            '<div class="req-meta">' + formatDate(r.date || r.requestDate) + '</div>' +
+            responseHtml +
+        '</div>';
     });
     container.innerHTML = html;
 }
@@ -2105,17 +2104,15 @@ function loadScheduledBuilds() {
         container.innerHTML = '<p style="color:var(--text-muted);">Нет запланированных строев</p>';
         return;
     }
-    const sorted = [...db.scheduledBuilds].sort((a, b) => new Date(a.start) - new Date(b.start));
+    const sorted = db.scheduledBuilds.slice().sort((a, b) => new Date(a.start) - new Date(b.start));
     let html = '';
-    sorted.forEach(b => {
-        html += `
-            <div class="build-item" onclick="openBuildDetail('${b.id}')">
-                <div class="build-topic">${b.topic}</div>
-                <div class="build-meta"><strong>Начало:</strong> ${formatDateShort(b.start)}</div>
-                <div class="build-status">✅ ОДОБРЕН</div>
-                <div style="color:var(--text-muted); font-size:11px; margin-top:4px;">Нажмите для подробностей</div>
-            </div>
-        `;
+    sorted.forEach(function(b) {
+        html += '<div class="build-item" onclick="openBuildDetail(\'' + b.id + '\')">' +
+            '<div class="build-topic">' + b.topic + '</div>' +
+            '<div class="build-meta"><strong>Начало:</strong> ' + formatDateShort(b.start) + '</div>' +
+            '<div class="build-status">✅ ОДОБРЕН</div>' +
+            '<div style="color:var(--text-muted); font-size:11px; margin-top:4px;">Нажмите для подробностей</div>' +
+        '</div>';
     });
     container.innerHTML = html;
 }
@@ -2124,25 +2121,21 @@ function openBuildDetail(buildId) {
     const build = db.scheduledBuilds.find(b => b.id === buildId);
     if (!build) return;
     const container = document.getElementById('buildDetailContent');
-    let html = `
-        <div style="border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:12px;">
-            <h3 style="color:var(--text-primary); font-weight:300; letter-spacing:2px;">${build.topic}</h3>
-        </div>
-        <div style="color:var(--text-secondary); font-size:14px; line-height:1.8;">
-            <p><strong style="color:var(--text-primary);">Начало:</strong> ${formatDate(build.start)}</p>
-            <p><strong style="color:var(--text-primary);">Окончание:</strong> ${formatDate(build.end)}</p>
-            <p><strong style="color:var(--text-primary);">Организатор:</strong> ${build.organizerNick || build.userNick || 'Неизвестен'}</p>
-            <p><strong style="color:var(--text-primary);">Обязаны явиться:</strong> ${build.required.join(', ')}</p>
-            <p><strong style="color:var(--text-primary);">Нельзя появляться:</strong> ${build.forbidden.join(', ')}</p>
-            <p><strong style="color:var(--text-primary);">Статус:</strong> <span style="color:var(--success-color);">✅ Одобрен</span></p>
-        </div>
-    `;
+    let html = '<div style="border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:12px;">' +
+        '<h3 style="color:var(--text-primary); font-weight:300; letter-spacing:2px;">' + build.topic + '</h3>' +
+    '</div>' +
+    '<div style="color:var(--text-secondary); font-size:14px; line-height:1.8;">' +
+        '<p><strong style="color:var(--text-primary);">Начало:</strong> ' + formatDate(build.start) + '</p>' +
+        '<p><strong style="color:var(--text-primary);">Окончание:</strong> ' + formatDate(build.end) + '</p>' +
+        '<p><strong style="color:var(--text-primary);">Организатор:</strong> ' + (build.organizerNick || build.userNick || 'Неизвестен') + '</p>' +
+        '<p><strong style="color:var(--text-primary);">Обязаны явиться:</strong> ' + build.required.join(', ') + '</p>' +
+        '<p><strong style="color:var(--text-primary);">Нельзя появляться:</strong> ' + build.forbidden.join(', ') + '</p>' +
+        '<p><strong style="color:var(--text-primary);">Статус:</strong> <span style="color:var(--success-color);">✅ Одобрен</span></p>' +
+    '</div>';
     if (isAdmin(currentUser)) {
-        html += `
-            <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border-color);">
-                <button class="btn btn-danger" onclick="deleteBuild('${build.id}')" style="width:auto; padding:8px 24px;">🗑️ Удалить строй</button>
-            </div>
-        `;
+        html += '<div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border-color);">' +
+            '<button class="btn btn-danger" onclick="deleteBuild(\'' + build.id + '\')" style="width:auto; padding:8px 24px;">🗑️ Удалить строй</button>' +
+        '</div>';
     }
     container.innerHTML = html;
     document.getElementById('buildDetailModal').classList.add('active');
@@ -2158,7 +2151,7 @@ async function deleteBuild(buildId) {
     await saveDB();
     closeBuildDetail();
     loadScheduledBuilds();
-    addHistory(currentUser.id, 'Удаление строя', `Удалён строй из запланированных`);
+    addHistory(currentUser.id, 'Удаление строя', 'Удалён строй из запланированных');
     showToast('🗑️ СТРОЙ УДАЛЁН', 'Строй удалён из запланированных', 'info');
 }
 
@@ -2170,7 +2163,7 @@ function loadFamiliesDisplay() {
         alliesContainer.innerHTML = '<p class="empty">Нет союзников</p>';
     } else {
         let html = '';
-        db.allies.forEach(a => { html += `<div class="family-item">🤝 ${a}</div>`; });
+        db.allies.forEach(function(a) { html += '<div class="family-item">🤝 ' + a + '</div>'; });
         alliesContainer.innerHTML = html;
     }
     const enemiesContainer = document.getElementById('enemiesDisplay');
@@ -2178,7 +2171,7 @@ function loadFamiliesDisplay() {
         enemiesContainer.innerHTML = '<p class="empty">Нет недружественных семей</p>';
     } else {
         let html = '';
-        db.enemies.forEach(e => { html += `<div class="family-item">⚔️ ${e}</div>`; });
+        db.enemies.forEach(function(e) { html += '<div class="family-item">⚔️ ' + e + '</div>'; });
         enemiesContainer.innerHTML = html;
     }
 }
@@ -2193,16 +2186,14 @@ function loadPremium(user) {
         return;
     }
     let html = '';
-    history.slice().reverse().forEach(h => {
+    history.slice().reverse().forEach(function(h) {
         const sign = h.amount > 0 ? '+' : '';
         const color = h.amount > 0 ? 'var(--success-color)' : 'var(--danger-color)';
-        html += `
-            <div style="border-bottom:1px solid var(--border-color); padding:8px 0; display:flex; justify-content:space-between; flex-wrap:wrap;">
-                <span style="color:var(--text-secondary);">${h.text}</span>
-                <span style="color:${color};">${sign}${h.amount} ₽</span>
-                <span style="color:var(--text-muted); font-size:11px;">${formatDate(h.date)}</span>
-            </div>
-        `;
+        html += '<div style="border-bottom:1px solid var(--border-color); padding:8px 0; display:flex; justify-content:space-between; flex-wrap:wrap;">' +
+            '<span style="color:var(--text-secondary);">' + h.text + '</span>' +
+            '<span style="color:' + color + ';">' + sign + h.amount + ' ₽</span>' +
+            '<span style="color:var(--text-muted); font-size:11px;">' + formatDate(h.date) + '</span>' +
+        '</div>';
     });
     container.innerHTML = html;
 }
@@ -2252,11 +2243,11 @@ async function submitWithdraw() {
     await saveDB();
     res.textContent = '✅ Заявка на вывод отправлена! Ожидайте одобрения администрации.';
     res.className = 'result-msg success';
-    addNotification(currentUser.id, '📤 ЗАЯВКА НА ВЫВОД', `Заявка на вывод ${withdrawAmount} ₽ отправлена`, 'info');
+    addNotification(currentUser.id, '📤 ЗАЯВКА НА ВЫВОД', 'Заявка на вывод ' + withdrawAmount + ' ₽ отправлена', 'info');
     showToast('✅ ЗАЯВКА ОТПРАВЛЕНА', 'Заявка на вывод отправлена', 'info');
-    db.users.forEach(u => {
+    db.users.forEach(function(u) {
         if (isAdmin(u)) {
-            addNotification(u.id, '📤 НОВАЯ ЗАЯВКА НА ВЫВОД', `${currentUser.gameNick} запросил вывод ${withdrawAmount} ₽`, 'info');
+            addNotification(u.id, '📤 НОВАЯ ЗАЯВКА НА ВЫВОД', currentUser.gameNick + ' запросил вывод ' + withdrawAmount + ' ₽', 'info');
         }
     });
     setTimeout(() => closeWithdrawModal(), 1500);
@@ -2286,7 +2277,7 @@ async function issuePremium() {
     
     const user = getUserById(userId);
     if (!user) {
-        res.textContent = `❌ Пользователь с ID "${userId}" не найден`;
+        res.textContent = '❌ Пользователь с ID "' + userId + '" не найден';
         res.className = 'result-msg error';
         return;
     }
@@ -2300,23 +2291,23 @@ async function issuePremium() {
     if (!user.premiumHistory) user.premiumHistory = [];
     user.premiumHistory.push({
         amount: amount,
-        text: `Премия от ${currentUser.gameNick} (${amount} ₽)`,
+        text: 'Премия от ' + currentUser.gameNick + ' (' + amount + ' ₽)',
         date: new Date().toISOString()
     });
     
-    addNotification(userId, '💰 ПОЛУЧЕНА ПРЕМИЯ', `Вам начислено ${amount} ₽ от ${currentUser.gameNick}`, 'info');
-    db.users.forEach(u => {
+    addNotification(userId, '💰 ПОЛУЧЕНА ПРЕМИЯ', 'Вам начислено ' + amount + ' ₽ от ' + currentUser.gameNick, 'info');
+    db.users.forEach(function(u) {
         if (isAdmin(u) && u.id !== currentUser.id) {
-            addNotification(u.id, '💰 ВЫДАЧА ПРЕМИИ', `${currentUser.gameNick} выдал ${amount} ₽ пользователю ${user.gameNick}`, 'info');
+            addNotification(u.id, '💰 ВЫДАЧА ПРЕМИИ', currentUser.gameNick + ' выдал ' + amount + ' ₽ пользователю ' + user.gameNick, 'info');
         }
     });
-    addHistory(currentUser.id, 'Выдача премии', `Выдано ${amount} ₽ пользователю ${user.gameNick} (${user.id})`);
+    addHistory(currentUser.id, 'Выдача премии', 'Выдано ' + amount + ' ₽ пользователю ' + user.gameNick + ' (' + user.id + ')');
     
     await saveDB();
     
-    res.textContent = `✅ Премия ${amount} ₽ выдана пользователю ${user.gameNick} (ID: ${user.id})`;
+    res.textContent = '✅ Премия ' + amount + ' ₽ выдана пользователю ' + user.gameNick + ' (ID: ' + user.id + ')';
     res.className = 'result-msg success';
-    showToast('💰 ПРЕМИЯ ВЫДАНА', `${user.gameNick} получил ${amount} ₽`, 'info');
+    showToast('💰 ПРЕМИЯ ВЫДАНА', user.gameNick + ' получил ' + amount + ' ₽', 'info');
     
     document.getElementById('premiumUserId').value = '';
     document.getElementById('premiumAmount').value = '';
@@ -2351,7 +2342,7 @@ async function withdrawMoneyFromUser() {
     
     const user = getUserById(userId);
     if (!user) {
-        res.textContent = `❌ Пользователь с ID "${userId}" не найден`;
+        res.textContent = '❌ Пользователь с ID "' + userId + '" не найден';
         res.className = 'result-msg error';
         return;
     }
@@ -2363,7 +2354,7 @@ async function withdrawMoneyFromUser() {
     
     const currentBalance = user.balance || 0;
     if (currentBalance < amount) {
-        res.textContent = `❌ Недостаточно средств. Баланс пользователя: ${currentBalance} ₽`;
+        res.textContent = '❌ Недостаточно средств. Баланс пользователя: ' + currentBalance + ' ₽';
         res.className = 'result-msg error';
         return;
     }
@@ -2372,23 +2363,23 @@ async function withdrawMoneyFromUser() {
     if (!user.premiumHistory) user.premiumHistory = [];
     user.premiumHistory.push({
         amount: -amount,
-        text: `Списание средств администратором ${currentUser.gameNick}: ${reason}`,
+        text: 'Списание средств администратором ' + currentUser.gameNick + ': ' + reason,
         date: new Date().toISOString()
     });
     
-    addNotification(userId, '💸 СПИСАНИЕ СРЕДСТВ', `Администратор ${currentUser.gameNick} списал ${amount} ₽. Причина: ${reason}`, 'danger');
-    db.users.forEach(u => {
+    addNotification(userId, '💸 СПИСАНИЕ СРЕДСТВ', 'Администратор ' + currentUser.gameNick + ' списал ' + amount + ' ₽. Причина: ' + reason, 'danger');
+    db.users.forEach(function(u) {
         if (isAdmin(u) && u.id !== currentUser.id) {
-            addNotification(u.id, '💸 СПИСАНИЕ СРЕДСТВ', `${currentUser.gameNick} списал ${amount} ₽ у ${user.gameNick}. Причина: ${reason}`, 'info');
+            addNotification(u.id, '💸 СПИСАНИЕ СРЕДСТВ', currentUser.gameNick + ' списал ' + amount + ' ₽ у ' + user.gameNick + '. Причина: ' + reason, 'info');
         }
     });
-    addHistory(currentUser.id, 'Списание средств', `Списано ${amount} ₽ у ${user.gameNick} (${user.id}). Причина: ${reason}`);
+    addHistory(currentUser.id, 'Списание средств', 'Списано ' + amount + ' ₽ у ' + user.gameNick + ' (' + user.id + '). Причина: ' + reason);
     
     await saveDB();
     
-    res.textContent = `✅ Списано ${amount} ₽ у пользователя ${user.gameNick} (ID: ${user.id})`;
+    res.textContent = '✅ Списано ' + amount + ' ₽ у пользователя ' + user.gameNick + ' (ID: ' + user.id + ')';
     res.className = 'result-msg success';
-    showToast('💸 ДЕНЬГИ СПИСАНЫ', `${user.gameNick} списано ${amount} ₽`, 'danger');
+    showToast('💸 ДЕНЬГИ СПИСАНЫ', user.gameNick + ' списано ' + amount + ' ₽', 'danger');
     
     document.getElementById('withdrawMoneyUserId').value = '';
     document.getElementById('withdrawMoneyAmount').value = '';
@@ -2409,21 +2400,19 @@ function loadWithdrawRequests() {
         return;
     }
     let html = '';
-    pending.forEach(r => {
-        html += `
-            <div class="request-item">
-                <div style="display:flex; justify-content:space-between; flex-wrap:wrap;">
-                    <span style="color:var(--text-primary);">${r.userNick}</span>
-                    <span style="color:var(--accent-color);">${r.amount} ₽</span>
-                </div>
-                <div class="req-text" style="color:var(--text-muted);">Запрошено: ${r.requestedAmount} ₽</div>
-                <div class="req-meta">${formatDate(r.date)}</div>
-                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
-                    <button class="btn btn-small btn-green" onclick="respondWithdraw('${r.id}', 'approved')" style="width:auto;">Одобрить</button>
-                    <button class="btn btn-small btn-danger" onclick="respondWithdraw('${r.id}', 'rejected')" style="width:auto;">Отклонить</button>
-                </div>
-            </div>
-        `;
+    pending.forEach(function(r) {
+        html += '<div class="request-item">' +
+            '<div style="display:flex; justify-content:space-between; flex-wrap:wrap;">' +
+                '<span style="color:var(--text-primary);">' + r.userNick + '</span>' +
+                '<span style="color:var(--accent-color);">' + r.amount + ' ₽</span>' +
+            '</div>' +
+            '<div class="req-text" style="color:var(--text-muted);">Запрошено: ' + r.requestedAmount + ' ₽</div>' +
+            '<div class="req-meta">' + formatDate(r.date) + '</div>' +
+            '<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">' +
+                '<button class="btn btn-small btn-green" onclick="respondWithdraw(\'' + r.id + '\', \'approved\')" style="width:auto;">Одобрить</button>' +
+                '<button class="btn btn-small btn-danger" onclick="respondWithdraw(\'' + r.id + '\', \'rejected\')" style="width:auto;">Отклонить</button>' +
+            '</div>' +
+        '</div>';
     });
     container.innerHTML = html;
 }
@@ -2431,7 +2420,7 @@ function loadWithdrawRequests() {
 async function respondWithdraw(requestId, status) {
     const request = db.withdrawRequests.find(r => r.id === requestId);
     if (!request) return;
-    const comment = prompt(`Введите комментарий для ${status === 'approved' ? 'одобрения' : 'отклонения'}:`);
+    const comment = prompt('Введите комментарий для ' + (status === 'approved' ? 'одобрения' : 'отклонения') + ':');
     if (comment === null) return;
     request.status = status;
     request.response = comment;
@@ -2443,14 +2432,14 @@ async function respondWithdraw(requestId, status) {
         if (!user.premiumHistory) user.premiumHistory = [];
         user.premiumHistory.push({
             amount: -withdrawAmount,
-            text: `Вывод средств (одобрен)`,
+            text: 'Вывод средств (одобрен)',
             date: new Date().toISOString()
         });
-        addNotification(user.id, '✅ ВЫВОД ОДОБРЕН', `Вывод ${withdrawAmount} ₽ одобрен. Комментарий: ${comment}`, 'info');
-        addHistory(currentUser.id, 'Одобрение вывода', `Одобрен вывод ${withdrawAmount} ₽ у ${user.gameNick}`);
+        addNotification(user.id, '✅ ВЫВОД ОДОБРЕН', 'Вывод ' + withdrawAmount + ' ₽ одобрен. Комментарий: ' + comment, 'info');
+        addHistory(currentUser.id, 'Одобрение вывода', 'Одобрен вывод ' + withdrawAmount + ' ₽ у ' + user.gameNick);
     } else if (status === 'rejected' && user) {
-        addNotification(user.id, '❌ ВЫВОД ОТКЛОНЁН', `Вывод ${request.amount} ₽ отклонён. Комментарий: ${comment}`, 'danger');
-        addHistory(currentUser.id, 'Отклонение вывода', `Отклонён вывод ${request.amount} ₽ у ${user.gameNick}`);
+        addNotification(user.id, '❌ ВЫВОД ОТКЛОНЁН', 'Вывод ' + request.amount + ' ₽ отклонён. Комментарий: ' + comment, 'danger');
+        addHistory(currentUser.id, 'Отклонение вывода', 'Отклонён вывод ' + request.amount + ' ₽ у ' + user.gameNick);
     }
     await saveDB();
     loadWithdrawRequests();
@@ -2468,12 +2457,12 @@ function loadAdminMembers() {
         list.innerHTML = '<p style="color:var(--text-muted);">Нет зарегистрированных членов</p>';
         return;
     }
-    let html = `<p style="color:var(--text-primary); margin-bottom:10px;">Всего: ${members.length}</p>`;
-    members.forEach(u => {
-        html += `<div style="border-bottom:1px solid var(--border-color); padding:8px 0; color:var(--text-secondary); font-size:13px;">
-            <span style="color:var(--text-primary);">${u.gameNick}</span> · ID ${u.id} · TG ${u.tgUser} · ${u.isBanned ? '🔴 Заблокирован' : '🟢 Активен'}
-            ${u.balance ? `· Баланс: ${u.balance} ₽` : ''}
-        </div>`;
+    let html = '<p style="color:var(--text-primary); margin-bottom:10px;">Всего: ' + members.length + '</p>';
+    members.forEach(function(u) {
+        const balanceStr = u.balance ? '· Баланс: ' + u.balance + ' ₽' : '';
+        html += '<div style="border-bottom:1px solid var(--border-color); padding:8px 0; color:var(--text-secondary); font-size:13px;">' +
+            '<span style="color:var(--text-primary);">' + u.gameNick + '</span> · ID ' + u.id + ' · TG ' + u.tgUser + ' · ' + (u.isBanned ? '🔴 Заблокирован' : '🟢 Активен') + ' ' + balanceStr +
+        '</div>';
     });
     list.innerHTML = html;
 }
@@ -2485,13 +2474,11 @@ function loadHistory() {
         return;
     }
     let html = '';
-    db.history.slice(-50).reverse().forEach(h => {
-        html += `
-            <div style="border-bottom:1px solid var(--border-color); padding:6px 0; color:var(--text-secondary); font-size:13px;">
-                <span style="color:var(--text-primary);">${h.userNick}</span> · ${h.action}
-                <span style="color:var(--text-muted); font-size:11px; display:block;">${h.details} · ${formatDate(h.date)}</span>
-            </div>
-        `;
+    db.history.slice(-50).reverse().forEach(function(h) {
+        html += '<div style="border-bottom:1px solid var(--border-color); padding:6px 0; color:var(--text-secondary); font-size:13px;">' +
+            '<span style="color:var(--text-primary);">' + h.userNick + '</span> · ' + h.action +
+            '<span style="color:var(--text-muted); font-size:11px; display:block;">' + h.details + ' · ' + formatDate(h.date) + '</span>' +
+        '</div>';
     });
     container.innerHTML = html;
 }
@@ -2504,24 +2491,27 @@ async function adminViewViolations() {
     if (!user) { res.innerHTML = '<p style="color:var(--danger-color);">Пользователь не найден</p>'; return; }
     const violations = user.violations || [];
     if (violations.length === 0) {
-        res.innerHTML = `<p style="color:var(--text-muted);">У ${user.gameNick} (${user.id}) нет нарушений</p>`;
+        res.innerHTML = '<p style="color:var(--text-muted);">У ' + user.gameNick + ' (' + user.id + ') нет нарушений</p>';
         return;
     }
-    const sorted = [...violations].sort((a, b) => new Date(b.date) - new Date(a.date));
-    let html = `<p style="color:var(--text-primary); margin-bottom:10px;">${user.gameNick} (${user.id}) — ${violations.length} нарушений</p>`;
-    sorted.forEach(v => {
-        html += `
-            <div class="violation-item ${v.resolved ? 'resolved' : ''}">
-                <div class="v-date">${formatDate(v.date)}</div>
-                <div class="v-type">${v.resolved ? '✅ СНЯТО' : '⚠️'} ${v.type || 'Нарушение'}</div>
-                <div class="v-desc">${v.description || 'Нет описания'}</div>
-                <div class="v-meta">Выдал: ${v.issuedByNick || v.issuedBy || 'Неизвестен'}</div>
-                ${v.resolved ? `<div class="v-resolved">Снято (${formatDate(v.resolvedDate)}) — ${v.resolutionReason || 'Причина не указана'}</div>` : ''}
-            </div>
-        `;
+    const sorted = violations.slice().sort((a, b) => new Date(b.date) - new Date(a.date));
+    let html = '<p style="color:var(--text-primary); margin-bottom:10px;">' + user.gameNick + ' (' + user.id + ') — ' + violations.length + ' нарушений</p>';
+    sorted.forEach(function(v) {
+        const resolvedHtml = v.resolved
+            ? '<div class="v-resolved">Снято (' + formatDate(v.resolvedDate) + ') — ' + (v.resolutionReason || 'Причина не указана') + '</div>'
+            : '';
+        html += '<div class="violation-item ' + (v.resolved ? 'resolved' : '') + '">' +
+            '<div class="v-date">' + formatDate(v.date) + '</div>' +
+            '<div class="v-type">' + (v.resolved ? '✅ СНЯТО' : '⚠️') + ' ' + (v.type || 'Нарушение') + '</div>' +
+            '<div class="v-desc">' + (v.description || 'Нет описания') + '</div>' +
+            '<div class="v-meta">Выдал: ' + (v.issuedByNick || v.issuedBy || 'Неизвестен') + '</div>' +
+            resolvedHtml +
+        '</div>';
     });
     res.innerHTML = html;
 }
+
+let pendingAddUser = null;
 
 async function adminFindForAdd() {
     const id = document.getElementById('adminAddId').value.trim();
@@ -2531,10 +2521,8 @@ async function adminFindForAdd() {
     if (!user) { info.style.display = 'block'; info.innerHTML = '<p style="color:var(--danger-color);">Пользователь не найден</p>'; return; }
     pendingAddUser = user;
     info.style.display = 'block';
-    info.innerHTML = `<p style="color:var(--text-primary);">Найден: <strong>${user.gameNick}</strong> (${user.id})</p>`;
+    info.innerHTML = '<p style="color:var(--text-primary);">Найден: <strong>' + user.gameNick + '</strong> (' + user.id + ')</p>';
 }
-
-let pendingAddUser = null;
 
 async function adminAddViolation() {
     if (!pendingAddUser) {
@@ -2552,7 +2540,7 @@ async function adminAddViolation() {
     }
     const violation = {
         violationId: 'v' + (++db.violationCounter),
-        type, description: desc,
+        type: type, description: desc,
         date: new Date().toISOString(),
         issuedBy: currentUser.id,
         issuedByNick: currentUser.gameNick,
@@ -2564,10 +2552,10 @@ async function adminAddViolation() {
     };
     pendingAddUser.violations.push(violation);
     await saveDB();
-    res.textContent = `✅ Нарушение выдано ${pendingAddUser.gameNick}`;
+    res.textContent = '✅ Нарушение выдано ' + pendingAddUser.gameNick;
     res.className = 'result-msg success';
-    addNotification(pendingAddUser.id, '⚠️ НОВОЕ НАРУШЕНИЕ', `Вам выписано нарушение: ${type}`, 'danger');
-    addHistory(currentUser.id, 'Выдача нарушения', `Выдано нарушение ${pendingAddUser.gameNick}: ${type}`);
+    addNotification(pendingAddUser.id, '⚠️ НОВОЕ НАРУШЕНИЕ', 'Вам выписано нарушение: ' + type, 'danger');
+    addHistory(currentUser.id, 'Выдача нарушения', 'Выдано нарушение ' + pendingAddUser.gameNick + ': ' + type);
     document.getElementById('adminAddType').value = '';
     document.getElementById('adminAddDesc').value = '';
     if (db.currentSession === pendingAddUser.id) {
@@ -2589,19 +2577,17 @@ async function adminFindForRemove() {
     if (!user) { list.innerHTML = '<p style="color:var(--danger-color);">Пользователь не найден</p>'; return; }
     const violations = user.violations.filter(v => !v.resolved);
     if (violations.length === 0) {
-        list.innerHTML = `<p style="color:var(--text-muted);">У ${user.gameNick} нет активных нарушений</p>`;
+        list.innerHTML = '<p style="color:var(--text-muted);">У ' + user.gameNick + ' нет активных нарушений</p>';
         return;
     }
-    let html = `<p style="color:var(--text-primary); margin-bottom:10px;">${user.gameNick} (${user.id}) — активные нарушения:</p>`;
-    violations.forEach(v => {
-        html += `
-            <div class="violation-item" style="cursor:pointer; border-left-color:var(--text-primary);" onclick="selectForRemove('${v.violationId}')">
-                <div class="v-date">${formatDate(v.date)}</div>
-                <div class="v-type">⚠️ ${v.type || 'Нарушение'}</div>
-                <div class="v-desc">${v.description || 'Нет описания'}</div>
-                <div class="v-meta">Выдал: ${v.issuedByNick || v.issuedBy || 'Неизвестен'}</div>
-            </div>
-        `;
+    let html = '<p style="color:var(--text-primary); margin-bottom:10px;">' + user.gameNick + ' (' + user.id + ') — активные нарушения:</p>';
+    violations.forEach(function(v) {
+        html += '<div class="violation-item" style="cursor:pointer; border-left-color:var(--text-primary);" onclick="selectForRemove(\'' + v.violationId + '\')">' +
+            '<div class="v-date">' + formatDate(v.date) + '</div>' +
+            '<div class="v-type">⚠️ ' + (v.type || 'Нарушение') + '</div>' +
+            '<div class="v-desc">' + (v.description || 'Нет описания') + '</div>' +
+            '<div class="v-meta">Выдал: ' + (v.issuedByNick || v.issuedBy || 'Неизвестен') + '</div>' +
+        '</div>';
     });
     list.innerHTML = html;
     pendingRemoveUser = user;
@@ -2613,19 +2599,17 @@ function selectForRemove(violationId) {
     if (!violation) return;
     pendingRemoveViolation = violation;
     const list = document.getElementById('adminRemoveList');
-    list.innerHTML = `
-        <div style="border:1px solid var(--border-color); padding:16px; background:var(--bg-secondary);">
-            <p style="color:var(--text-primary);">Выбрано нарушение:</p>
-            <p style="color:var(--text-secondary); font-size:13px;">${violation.type} — ${violation.description}</p>
-            <p style="color:var(--text-muted); font-size:12px;">${formatDate(violation.date)}</p>
-            <input type="text" id="removeReason" placeholder="Причина снятия" style="margin:10px 0;">
-            <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                <button class="btn btn-small" onclick="confirmRemove()" style="width:auto;">Снять</button>
-                <button class="btn btn-small btn-outline" onclick="cancelRemove()" style="width:auto;">Отмена</button>
-            </div>
-            <div id="removeResult" class="result-msg"></div>
-        </div>
-    `;
+    list.innerHTML = '<div style="border:1px solid var(--border-color); padding:16px; background:var(--bg-secondary);">' +
+        '<p style="color:var(--text-primary);">Выбрано нарушение:</p>' +
+        '<p style="color:var(--text-secondary); font-size:13px;">' + violation.type + ' — ' + violation.description + '</p>' +
+        '<p style="color:var(--text-muted); font-size:12px;">' + formatDate(violation.date) + '</p>' +
+        '<input type="text" id="removeReason" placeholder="Причина снятия" style="margin:10px 0;">' +
+        '<div style="display:flex; gap:8px; flex-wrap:wrap;">' +
+            '<button class="btn btn-small" onclick="confirmRemove()" style="width:auto;">Снять</button>' +
+            '<button class="btn btn-small btn-outline" onclick="cancelRemove()" style="width:auto;">Отмена</button>' +
+        '</div>' +
+        '<div id="removeResult" class="result-msg"></div>' +
+    '</div>';
 }
 
 async function confirmRemove() {
@@ -2638,9 +2622,9 @@ async function confirmRemove() {
     pendingRemoveViolation.resolutionReason = reason;
     pendingRemoveViolation._notifiedResolved = false;
     await saveDB();
-    document.getElementById('adminRemoveList').innerHTML = `<p style="color:var(--text-primary);">✅ Нарушение снято у ${pendingRemoveUser.gameNick}</p>`;
-    addNotification(pendingRemoveUser.id, '✅ НАРУШЕНИЕ СНЯТО', `С вас снято нарушение. Причина: ${reason}`, 'info');
-    addHistory(currentUser.id, 'Снятие нарушения', `Снято нарушение у ${pendingRemoveUser.gameNick}: ${reason}`);
+    document.getElementById('adminRemoveList').innerHTML = '<p style="color:var(--text-primary);">✅ Нарушение снято у ' + pendingRemoveUser.gameNick + '</p>';
+    addNotification(pendingRemoveUser.id, '✅ НАРУШЕНИЕ СНЯТО', 'С вас снято нарушение. Причина: ' + reason, 'info');
+    addHistory(currentUser.id, 'Снятие нарушения', 'Снято нарушение у ' + pendingRemoveUser.gameNick + ': ' + reason);
     if (db.currentSession === pendingRemoveUser.id) {
         showToast('✅ НАРУШЕНИЕ СНЯТО', 'С вас снято дисциплинарное взыскание', 'info');
         loadViolations(currentUser);
@@ -2667,7 +2651,7 @@ async function adminFindForBan() {
     if (isAdmin(user)) { info.style.display = 'block'; info.innerHTML = '<p style="color:var(--danger-color);">Нельзя заблокировать администратора</p>'; return; }
     pendingBanUser = user;
     info.style.display = 'block';
-    info.innerHTML = `<p style="color:var(--text-primary);">Найден: <strong>${user.gameNick}</strong> (${user.id}) — ${user.isBanned ? '🔴 Заблокирован' : 'Активен'}</p>`;
+    info.innerHTML = '<p style="color:var(--text-primary);">Найден: <strong>' + user.gameNick + '</strong> (' + user.id + ') — ' + (user.isBanned ? '🔴 Заблокирован' : 'Активен') + '</p>';
 }
 
 async function adminBanUser() {
@@ -2698,10 +2682,10 @@ async function adminBanUser() {
         unbanDate: unban.toISOString()
     };
     await saveDB();
-    res.textContent = `✅ ${pendingBanUser.gameNick} заблокирован до ${formatDate(unbanDate)}`;
+    res.textContent = '✅ ' + pendingBanUser.gameNick + ' заблокирован до ' + formatDate(unbanDate);
     res.className = 'result-msg success';
-    addNotification(pendingBanUser.id, '🔴 ВЫ ЗАБЛОКИРОВАНЫ', `Причина: ${reason}. Разблокировка: ${formatDate(unbanDate)}`, 'danger');
-    addHistory(currentUser.id, 'Блокировка', `Заблокирован ${pendingBanUser.gameNick}: ${reason}`);
+    addNotification(pendingBanUser.id, '🔴 ВЫ ЗАБЛОКИРОВАНЫ', 'Причина: ' + reason + '. Разблокировка: ' + formatDate(unbanDate), 'danger');
+    addHistory(currentUser.id, 'Блокировка', 'Заблокирован ' + pendingBanUser.gameNick + ': ' + reason);
     document.getElementById('adminBanReason').value = '';
     document.getElementById('adminBanUnbanDate').value = '';
     pendingBanUser = null;
@@ -2717,18 +2701,16 @@ async function adminFindForUnban() {
     if (!user) { info.style.display = 'block'; info.innerHTML = '<p style="color:var(--danger-color);">Пользователь не найден</p>'; return; }
     if (!user.isBanned) {
         info.style.display = 'block';
-        info.innerHTML = `<p style="color:var(--success-color);">${user.gameNick} (${user.id}) — не заблокирован</p>`;
+        info.innerHTML = '<p style="color:var(--success-color);">' + user.gameNick + ' (' + user.id + ') — не заблокирован</p>';
         pendingUnbanUser = null;
         return;
     }
     pendingUnbanUser = user;
     info.style.display = 'block';
-    info.innerHTML = `
-        <p style="color:var(--text-primary);">🔴 Заблокирован: <strong>${user.gameNick}</strong> (${user.id})</p>
-        <p style="color:var(--text-secondary); font-size:13px;">Причина: ${user.banInfo.reason}</p>
-        <p style="color:var(--text-secondary); font-size:13px;">Забанил: ${getUserById(user.banInfo.bannedBy)?.gameNick || user.banInfo.bannedBy || 'Неизвестен'}</p>
-        <p style="color:var(--text-secondary); font-size:13px;">Разблокировка: ${formatDate(user.banInfo.unbanDate)}</p>
-    `;
+    info.innerHTML = '<p style="color:var(--text-primary);">🔴 Заблокирован: <strong>' + user.gameNick + '</strong> (' + user.id + ')</p>' +
+        '<p style="color:var(--text-secondary); font-size:13px;">Причина: ' + user.banInfo.reason + '</p>' +
+        '<p style="color:var(--text-secondary); font-size:13px;">Забанил: ' + (getUserById(user.banInfo.bannedBy)?.gameNick || user.banInfo.bannedBy || 'Неизвестен') + '</p>' +
+        '<p style="color:var(--text-secondary); font-size:13px;">Разблокировка: ' + formatDate(user.banInfo.unbanDate) + '</p>';
 }
 
 async function adminUnbanUser() {
@@ -2740,19 +2722,18 @@ async function adminUnbanUser() {
     const reason = document.getElementById('adminUnbanReason').value.trim();
     const res = document.getElementById('adminUnbanResult');
     pendingUnbanUser.isBanned = false;
-    pendingUnbanUser.banInfo = {
-        ...pendingUnbanUser.banInfo,
+    pendingUnbanUser.banInfo = Object.assign({}, pendingUnbanUser.banInfo, {
         unbannedEarly: true,
         unbannedBy: currentUser.id,
         unbannedByNick: currentUser.gameNick,
         unbanReason: reason || 'Досрочный разбан',
         unbanDate: new Date().toISOString()
-    };
+    });
     await saveDB();
-    res.textContent = `✅ ${pendingUnbanUser.gameNick} разблокирован досрочно`;
+    res.textContent = '✅ ' + pendingUnbanUser.gameNick + ' разблокирован досрочно';
     res.className = 'result-msg success';
     addNotification(pendingUnbanUser.id, '✅ ВЫ РАЗБЛОКИРОВАНЫ', 'Вы разблокированы досрочно', 'info');
-    addHistory(currentUser.id, 'Досрочный разбан', `Разблокирован ${pendingUnbanUser.gameNick} досрочно`);
+    addHistory(currentUser.id, 'Досрочный разбан', 'Разблокирован ' + pendingUnbanUser.gameNick + ' досрочно');
     document.getElementById('adminUnbanReason').value = '';
     pendingUnbanUser = null;
     document.getElementById('adminUnbanUserInfo').style.display = 'none';
@@ -2768,23 +2749,21 @@ function loadAdminRequests() {
         return;
     }
     let html = '';
-    pending.forEach(r => {
+    pending.forEach(function(r) {
         const typeText = r.type === 'remove' ? 'Снятие нарушения' : 'Выдача нарушения';
-        html += `
-            <div class="request-item">
-                <div style="display:flex; justify-content:space-between; flex-wrap:wrap;">
-                    <span style="color:var(--text-primary);">${typeText}</span>
-                    <span style="color:#ffaa00;">⏳ Ожидает</span>
-                </div>
-                <div class="req-text">От: ${r.userNick} → ${r.targetNick || r.target}</div>
-                <div class="req-text" style="color:var(--text-secondary);">${r.type === 'remove' ? r.reason : r.reason}</div>
-                <div class="req-meta">${formatDate(r.date || r.requestDate)}</div>
-                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
-                    <button class="btn btn-small btn-green" onclick="respondRequest('${r.id}', 'approved')" style="width:auto;">Принять</button>
-                    <button class="btn btn-small btn-danger" onclick="respondRequest('${r.id}', 'rejected')" style="width:auto;">Отклонить</button>
-                </div>
-            </div>
-        `;
+        html += '<div class="request-item">' +
+            '<div style="display:flex; justify-content:space-between; flex-wrap:wrap;">' +
+                '<span style="color:var(--text-primary);">' + typeText + '</span>' +
+                '<span style="color:#ffaa00;">⏳ Ожидает</span>' +
+            '</div>' +
+            '<div class="req-text">От: ' + r.userNick + ' → ' + (r.targetNick || r.target) + '</div>' +
+            '<div class="req-text" style="color:var(--text-secondary);">' + r.reason + '</div>' +
+            '<div class="req-meta">' + formatDate(r.date || r.requestDate) + '</div>' +
+            '<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">' +
+                '<button class="btn btn-small btn-green" onclick="respondRequest(\'' + r.id + '\', \'approved\')" style="width:auto;">Принять</button>' +
+                '<button class="btn btn-small btn-danger" onclick="respondRequest(\'' + r.id + '\', \'rejected\')" style="width:auto;">Отклонить</button>' +
+            '</div>' +
+        '</div>';
     });
     container.innerHTML = html;
 }
@@ -2792,15 +2771,15 @@ function loadAdminRequests() {
 async function respondRequest(requestId, status) {
     const request = db.requests.find(r => r.id === requestId);
     if (!request) return;
-    const reason = prompt(`Введите причину ${status === 'approved' ? 'одобрения' : 'отклонения'}:`);
+    const reason = prompt('Введите причину ' + (status === 'approved' ? 'одобрения' : 'отклонения') + ':');
     if (reason === null) return;
     request.status = status;
     request.response = reason;
     await saveDB();
     const statusText = status === 'approved' ? 'одобрена' : 'отклонена';
-    addNotification(request.userId, `📩 ЗАЯВКА ${statusText.toUpperCase()}`, `Ваша заявка ${statusText}. Причина: ${reason}`, status === 'approved' ? 'info' : 'danger');
-    addHistory(currentUser.id, `Заявка ${statusText}`, `Заявка ${requestId} ${statusText}: ${reason}`);
-    showToast(`✅ ЗАЯВКА ${statusText.toUpperCase()}`, `Заявка ${statusText}`, status === 'approved' ? 'info' : 'danger');
+    addNotification(request.userId, '📩 ЗАЯВКА ' + statusText.toUpperCase(), 'Ваша заявка ' + statusText + '. Причина: ' + reason, status === 'approved' ? 'info' : 'danger');
+    addHistory(currentUser.id, 'Заявка ' + statusText, 'Заявка ' + requestId + ' ' + statusText + ': ' + reason);
+    showToast('✅ ЗАЯВКА ' + statusText.toUpperCase(), 'Заявка ' + statusText, status === 'approved' ? 'info' : 'danger');
     loadAdminRequests();
     loadUserRequests();
 }
@@ -2814,24 +2793,22 @@ function loadAdminBuildRequests() {
         return;
     }
     let html = '';
-    pending.forEach(r => {
-        html += `
-            <div class="request-item">
-                <div style="display:flex; justify-content:space-between; flex-wrap:wrap;">
-                    <span style="color:var(--text-primary);">${r.topic}</span>
-                    <span style="color:#ffaa00;">⏳ Ожидает</span>
-                </div>
-                <div class="req-text">От: ${r.userNick}</div>
-                <div class="req-text" style="color:var(--text-secondary);">Начало: ${formatDateShort(r.start)} · Окончание: ${formatDateShort(r.end)}</div>
-                <div class="req-text" style="color:var(--text-muted);">Обязаны: ${r.required.join(', ')}</div>
-                <div class="req-text" style="color:var(--text-muted);">Запрещено: ${r.forbidden.join(', ')}</div>
-                <div class="req-meta">${formatDate(r.date)}</div>
-                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
-                    <button class="btn btn-small btn-green" onclick="respondBuildRequest('${r.id}', 'approved')" style="width:auto;">Одобрить</button>
-                    <button class="btn btn-small btn-danger" onclick="respondBuildRequest('${r.id}', 'rejected')" style="width:auto;">Отклонить</button>
-                </div>
-            </div>
-        `;
+    pending.forEach(function(r) {
+        html += '<div class="request-item">' +
+            '<div style="display:flex; justify-content:space-between; flex-wrap:wrap;">' +
+                '<span style="color:var(--text-primary);">' + r.topic + '</span>' +
+                '<span style="color:#ffaa00;">⏳ Ожидает</span>' +
+            '</div>' +
+            '<div class="req-text">От: ' + r.userNick + '</div>' +
+            '<div class="req-text" style="color:var(--text-secondary);">Начало: ' + formatDateShort(r.start) + ' · Окончание: ' + formatDateShort(r.end) + '</div>' +
+            '<div class="req-text" style="color:var(--text-muted);">Обязаны: ' + r.required.join(', ') + '</div>' +
+            '<div class="req-text" style="color:var(--text-muted);">Запрещено: ' + r.forbidden.join(', ') + '</div>' +
+            '<div class="req-meta">' + formatDate(r.date) + '</div>' +
+            '<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">' +
+                '<button class="btn btn-small btn-green" onclick="respondBuildRequest(\'' + r.id + '\', \'approved\')" style="width:auto;">Одобрить</button>' +
+                '<button class="btn btn-small btn-danger" onclick="respondBuildRequest(\'' + r.id + '\', \'rejected\')" style="width:auto;">Отклонить</button>' +
+            '</div>' +
+        '</div>';
     });
     container.innerHTML = html;
 }
@@ -2839,7 +2816,7 @@ function loadAdminBuildRequests() {
 async function respondBuildRequest(requestId, status) {
     const request = db.buildRequests.find(r => r.id === requestId);
     if (!request) return;
-    const comment = prompt(`Введите комментарий для ${status === 'approved' ? 'одобрения' : 'отклонения'}:`);
+    const comment = prompt('Введите комментарий для ' + (status === 'approved' ? 'одобрения' : 'отклонения') + ':');
     if (comment === null) return;
     request.status = status;
     request.response = comment;
@@ -2856,20 +2833,20 @@ async function respondBuildRequest(requestId, status) {
             organizerNick: request.userNick,
             date: new Date().toISOString()
         });
-        db.users.forEach(u => {
+        db.users.forEach(function(u) {
             if (!u.isAdmin) {
-                addNotification(u.id, '📢 НОВЫЙ СТРОЙ', `Запланирован строй: ${request.topic}`, 'info');
+                addNotification(u.id, '📢 НОВЫЙ СТРОЙ', 'Запланирован строй: ' + request.topic, 'info');
             }
         });
-        addHistory(currentUser.id, 'Одобрение строя', `Одобрен строй: ${request.topic}`);
-        showToast('📢 НОВЫЙ СТРОЙ', `Строй "${request.topic}" запланирован!`, 'info');
+        addHistory(currentUser.id, 'Одобрение строя', 'Одобрен строй: ' + request.topic);
+        showToast('📢 НОВЫЙ СТРОЙ', 'Строй "' + request.topic + '" запланирован!', 'info');
     } else {
-        addNotification(request.userId, '❌ ЗАЯВКА НА СТРОЙ ОТКЛОНЕНА', `Ваша заявка на строй отклонена. Причина: ${comment}`, 'danger');
-        addHistory(currentUser.id, 'Отклонение строя', `Отклонён строй: ${request.topic}`);
+        addNotification(request.userId, '❌ ЗАЯВКА НА СТРОЙ ОТКЛОНЕНА', 'Ваша заявка на строй отклонена. Причина: ' + comment, 'danger');
+        addHistory(currentUser.id, 'Отклонение строя', 'Отклонён строй: ' + request.topic);
     }
     await saveDB();
     const statusText = status === 'approved' ? 'одобрена' : 'отклонена';
-    showToast(`✅ ЗАЯВКА ${statusText.toUpperCase()}`, `Заявка на строй ${statusText}`, status === 'approved' ? 'info' : 'danger');
+    showToast('✅ ЗАЯВКА ' + statusText.toUpperCase(), 'Заявка на строй ' + statusText, status === 'approved' ? 'info' : 'danger');
     loadAdminBuildRequests();
     loadScheduledBuilds();
 }
@@ -2880,15 +2857,14 @@ async function adminSearchUser() {
     if (!id) { res.innerHTML = '<p style="color:var(--danger-color);">Введите ID</p>'; return; }
     const user = getUserById(id);
     if (!user) { res.innerHTML = '<p style="color:var(--danger-color);">Пользователь не найден</p>'; return; }
-    res.innerHTML = `
-        <div style="border-bottom:1px solid var(--border-color); padding:6px 0;"><strong>ID:</strong> ${user.id}</div>
-        <div style="border-bottom:1px solid var(--border-color); padding:6px 0;"><strong>Игровой ник:</strong> ${user.gameNick}</div>
-        <div style="border-bottom:1px solid var(--border-color); padding:6px 0;"><strong>Telegram:</strong> ${user.tgUser}</div>
-        <div style="border-bottom:1px solid var(--border-color); padding:6px 0;"><strong>Email:</strong> ${user.email || '-'}</div>
-        <div style="border-bottom:1px solid var(--border-color); padding:6px 0;"><strong>Статус:</strong> ${user.isBanned ? '🔴 Заблокирован' : 'Активен'}</div>
-        ${user.isBanned ? `<div style="border-bottom:1px solid var(--border-color); padding:6px 0;"><strong>Причина бана:</strong> ${user.banInfo?.reason || '-'}</div>` : ''}
-        <div style="padding:6px 0;"><strong>Нарушений:</strong> ${(user.violations || []).length}</div>
-    `;
+    const banHtml = user.isBanned ? '<div style="border-bottom:1px solid var(--border-color); padding:6px 0;"><strong>Причина бана:</strong> ' + (user.banInfo?.reason || '-') + '</div>' : '';
+    res.innerHTML = '<div style="border-bottom:1px solid var(--border-color); padding:6px 0;"><strong>ID:</strong> ' + user.id + '</div>' +
+        '<div style="border-bottom:1px solid var(--border-color); padding:6px 0;"><strong>Игровой ник:</strong> ' + user.gameNick + '</div>' +
+        '<div style="border-bottom:1px solid var(--border-color); padding:6px 0;"><strong>Telegram:</strong> ' + user.tgUser + '</div>' +
+        '<div style="border-bottom:1px solid var(--border-color); padding:6px 0;"><strong>Email:</strong> ' + (user.email || '-') + '</div>' +
+        '<div style="border-bottom:1px solid var(--border-color); padding:6px 0;"><strong>Статус:</strong> ' + (user.isBanned ? '🔴 Заблокирован' : 'Активен') + '</div>' +
+        banHtml +
+        '<div style="padding:6px 0;"><strong>Нарушений:</strong> ' + ((user.violations || []).length) + '</div>';
 }
 
 function openNotifications() {
@@ -2903,15 +2879,13 @@ function openNotifications() {
     } else {
         let html = '';
         userNotifs.sort((a, b) => new Date(b.date) - new Date(a.date));
-        userNotifs.forEach(n => {
+        userNotifs.forEach(function(n) {
             const color = n.type === 'danger' ? 'var(--danger-color)' : 'var(--success-color)';
-            html += `
-                <div style="border-bottom:1px solid var(--border-color); padding:10px 0;">
-                    <div style="color:${color};">${n.title}</div>
-                    <div style="color:var(--text-secondary); font-size:13px;">${n.text}</div>
-                    <div style="color:var(--text-muted); font-size:11px;">${formatDate(n.date)}</div>
-                </div>
-            `;
+            html += '<div style="border-bottom:1px solid var(--border-color); padding:10px 0;">' +
+                '<div style="color:' + color + ';">' + n.title + '</div>' +
+                '<div style="color:var(--text-secondary); font-size:13px;">' + n.text + '</div>' +
+                '<div style="color:var(--text-muted); font-size:11px;">' + formatDate(n.date) + '</div>' +
+            '</div>';
         });
         container.innerHTML = html;
     }
@@ -2931,47 +2905,57 @@ function loadDynamicPages() {
     if (!pagesDb) return;
     let allPages = [];
     if (pagesDb.publicPages) {
-        allPages = allPages.concat(pagesDb.publicPages.map(p => ({ ...p, isPublic: true })));
+        allPages = allPages.concat(pagesDb.publicPages.map(p => Object.assign({}, p, { isPublic: true })));
     }
     if (isAdmin(currentUser) && pagesDb.adminPages) {
-        allPages = allPages.concat(pagesDb.adminPages.map(p => ({ ...p, isPublic: false })));
+        allPages = allPages.concat(pagesDb.adminPages.map(p => Object.assign({}, p, { isPublic: false })));
     }
     if (allPages.length === 0) {
         container.innerHTML = '<p style="color:var(--text-muted);">Нет доступных разделов</p>';
         return;
     }
     let html = '';
-    allPages.forEach(p => {
+    allPages.forEach(function(p) {
         const adminLabel = p.isPublic ? '' : ' [АДМИН]';
-        html += `
-            <div class="dynamic-page">
-                <div class="page-title"><span>${p.name} ${adminLabel}</span></div>
-                ${p.type === 'info' ? `
-                    <div class="page-content">${p.content || 'Нет содержимого'}</div>
-                ` : `
-                    <div class="page-content">
-                        <p style="color:var(--text-muted); margin-bottom:10px;">${p.content || ''}</p>
-                        <div class="request-form" data-page-id="${p.id}">
-                            ${p.fields ? p.fields.map(f => `
-                                <div class="form-field">
-                                    <label>${f.label} ${f.required ? '<span class="required">*</span>' : ''}</label>
-                                    ${f.type === 'text' ? `<input type="text" class="req-field" data-field="${f.label}" placeholder="${f.label}">` : ''}
-                                    ${f.type === 'textarea' ? `<textarea class="req-field" data-field="${f.label}" placeholder="${f.label}"></textarea>` : ''}
-                                    ${f.type === 'select' ? `
-                                        <select class="req-field" data-field="${f.label}">
-                                            ${f.options ? f.options.map(o => `<option value="${o}">${o}</option>`).join('') : ''}
-                                        </select>
-                                    ` : ''}
-                                </div>
-                            `).join('') : ''}
-                            <button class="btn btn-small" onclick="submitDynamicRequest('${p.id}')" style="width:auto; margin-top:10px;">📤 Отправить заявку</button>
-                        </div>
-                        <div id="dynamicReqResult_${p.id}" class="result-msg" style="margin-top:10px;"></div>
-                    </div>
-                `}
-                <div class="page-meta">Создан: ${formatDate(p.createdAt)} · ${p.createdBy || 'Неизвестен'}</div>
-            </div>
-        `;
+        let contentHtml = '';
+        if (p.type === 'info') {
+            contentHtml = '<div class="page-content">' + (p.content || 'Нет содержимого') + '</div>';
+        } else {
+            let fieldsHtml = '';
+            if (p.fields) {
+                fieldsHtml = p.fields.map(function(f) {
+                    let inputHtml = '';
+                    if (f.type === 'text') {
+                        inputHtml = '<input type="text" class="req-field" data-field="' + f.label + '" placeholder="' + f.label + '">';
+                    } else if (f.type === 'textarea') {
+                        inputHtml = '<textarea class="req-field" data-field="' + f.label + '" placeholder="' + f.label + '"></textarea>';
+                    } else if (f.type === 'select') {
+                        let optionsHtml = '';
+                        if (f.options) {
+                            optionsHtml = f.options.map(o => '<option value="' + o + '">' + o + '</option>').join('');
+                        }
+                        inputHtml = '<select class="req-field" data-field="' + f.label + '">' + optionsHtml + '</select>';
+                    }
+                    return '<div class="form-field">' +
+                        '<label>' + f.label + ' ' + (f.required ? '<span class="required">*</span>' : '') + '</label>' +
+                        inputHtml +
+                    '</div>';
+                }).join('');
+            }
+            contentHtml = '<div class="page-content">' +
+                '<p style="color:var(--text-muted); margin-bottom:10px;">' + (p.content || '') + '</p>' +
+                '<div class="request-form" data-page-id="' + p.id + '">' +
+                    fieldsHtml +
+                    '<button class="btn btn-small" onclick="submitDynamicRequest(\'' + p.id + '\')" style="width:auto; margin-top:10px;">📤 Отправить заявку</button>' +
+                '</div>' +
+                '<div id="dynamicReqResult_' + p.id + '" class="result-msg" style="margin-top:10px;"></div>' +
+            '</div>';
+        }
+        html += '<div class="dynamic-page">' +
+            '<div class="page-title"><span>' + p.name + ' ' + adminLabel + '</span></div>' +
+            contentHtml +
+            '<div class="page-meta">Создан: ' + formatDate(p.createdAt) + ' · ' + (p.createdBy || 'Неизвестен') + '</div>' +
+        '</div>';
     });
     container.innerHTML = html;
 }
@@ -2979,12 +2963,12 @@ function loadDynamicPages() {
 async function submitDynamicRequest(pageId) {
     const page = pagesDb.publicPages.find(p => p.id === pageId);
     if (!page) return;
-    const container = document.querySelector(`.request-form[data-page-id="${pageId}"]`);
+    const container = document.querySelector('.request-form[data-page-id="' + pageId + '"]');
     if (!container) return;
     const fields = container.querySelectorAll('.req-field');
     const answers = {};
     let allFilled = true;
-    fields.forEach(f => {
+    fields.forEach(function(f) {
         const label = f.dataset.field;
         const value = f.value.trim();
         answers[label] = value;
@@ -2992,8 +2976,8 @@ async function submitDynamicRequest(pageId) {
         if (fieldDef && fieldDef.required && !value) allFilled = false;
     });
     if (!allFilled) {
-        document.getElementById(`dynamicReqResult_${pageId}`).textContent = 'Заполните все обязательные поля!';
-        document.getElementById(`dynamicReqResult_${pageId}`).className = 'result-msg error';
+        document.getElementById('dynamicReqResult_' + pageId).textContent = 'Заполните все обязательные поля!';
+        document.getElementById('dynamicReqResult_' + pageId).className = 'result-msg error';
         return;
     }
     if (!page.requests) page.requests = [];
@@ -3007,8 +2991,8 @@ async function submitDynamicRequest(pageId) {
         response: null
     });
     await savePagesDB();
-    document.getElementById(`dynamicReqResult_${pageId}`).textContent = '✅ Заявка отправлена!';
-    document.getElementById(`dynamicReqResult_${pageId}`).className = 'result-msg success';
+    document.getElementById('dynamicReqResult_' + pageId).textContent = '✅ Заявка отправлена!';
+    document.getElementById('dynamicReqResult_' + pageId).className = 'result-msg success';
     addNotification(currentUser.id, '📤 ЗАЯВКА ОТПРАВЛЕНА', 'Заявка отправлена', 'info');
     showToast('✅ ЗАЯВКА ОТПРАВЛЕНА', 'Ваша заявка отправлена', 'info');
 }
@@ -3018,28 +3002,26 @@ function loadAdminPagesManagement() {
     if (!pagesDb) return;
     let allPages = [];
     if (pagesDb.publicPages) {
-        allPages = allPages.concat(pagesDb.publicPages.map(p => ({ ...p, typeLabel: 'Публичный' })));
+        allPages = allPages.concat(pagesDb.publicPages.map(p => Object.assign({}, p, { typeLabel: 'Публичный' })));
     }
     if (pagesDb.adminPages) {
-        allPages = allPages.concat(pagesDb.adminPages.map(p => ({ ...p, typeLabel: 'Админский' })));
+        allPages = allPages.concat(pagesDb.adminPages.map(p => Object.assign({}, p, { typeLabel: 'Админский' })));
     }
     if (allPages.length === 0) {
         container.innerHTML = '<p style="color:var(--text-muted);">Нет созданных разделов</p>';
         return;
     }
     let html = '';
-    allPages.forEach(p => {
+    allPages.forEach(function(p) {
         const typeIcon = p.type === 'info' ? '📄' : '📝';
-        html += `
-            <div style="border:1px solid var(--border-color); padding:12px 16px; margin:6px 0; background:var(--bg-secondary); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;">
-                <div>
-                    <span style="color:var(--text-primary);">${typeIcon} ${p.name}</span>
-                    <span style="color:var(--text-muted); font-size:11px; margin-left:10px;">${p.typeLabel}</span>
-                    <span style="color:var(--text-muted); font-size:11px; margin-left:10px;">${formatDate(p.createdAt)}</span>
-                </div>
-                <button class="btn btn-small btn-danger" onclick="deletePage('${p.id}')" style="width:auto; padding:4px 16px;">🗑️ Удалить</button>
-            </div>
-        `;
+        html += '<div style="border:1px solid var(--border-color); padding:12px 16px; margin:6px 0; background:var(--bg-secondary); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;">' +
+            '<div>' +
+                '<span style="color:var(--text-primary);">' + typeIcon + ' ' + p.name + '</span>' +
+                '<span style="color:var(--text-muted); font-size:11px; margin-left:10px;">' + p.typeLabel + '</span>' +
+                '<span style="color:var(--text-muted); font-size:11px; margin-left:10px;">' + formatDate(p.createdAt) + '</span>' +
+            '</div>' +
+            '<button class="btn btn-small btn-danger" onclick="deletePage(\'' + p.id + '\')" style="width:auto; padding:4px 16px;">🗑️ Удалить</button>' +
+        '</div>';
     });
     container.innerHTML = html;
 }
@@ -3054,9 +3036,13 @@ async function deletePage(pageId) {
     await savePagesDB();
     loadAdminPagesManagement();
     loadDynamicPages();
-    addHistory(currentUser.id, 'Удаление раздела', `Удалён раздел ${pageId}`);
+    addHistory(currentUser.id, 'Удаление раздела', 'Удалён раздел ' + pageId);
     showToast('🗑️ РАЗДЕЛ УДАЛЁН', 'Раздел удалён', 'info');
 }
+
+let addPageType = null;
+let addPageSubtype = null;
+let addPageFields = [];
 
 function openAddPageModal() {
     document.getElementById('addPageModal').classList.add('active');
@@ -3081,10 +3067,6 @@ function closeAddPageModal() {
     document.getElementById('addPageModal').classList.remove('active');
 }
 
-let addPageType = null;
-let addPageSubtype = null;
-let addPageFields = [];
-
 function addPageSelectType(type) {
     addPageType = type;
     if (type === 'public') {
@@ -3108,7 +3090,7 @@ function addPageSelectSubtype(subtype) {
     addPageSubtype = subtype;
     document.getElementById('addPageStep2').style.display = 'none';
     document.getElementById('addPageStep3').style.display = 'block';
-    document.getElementById('addPageSubtypeResult').textContent = `✅ Выбран: ${subtype === 'info' ? 'Информационный' : 'С заявками'}`;
+    document.getElementById('addPageSubtypeResult').textContent = '✅ Выбран: ' + (subtype === 'info' ? 'Информационный' : 'С заявками');
     document.getElementById('addPageSubtypeResult').className = 'result-msg success';
     if (subtype === 'info') {
         document.getElementById('addPageInfoFields').style.display = 'block';
@@ -3123,37 +3105,33 @@ function addPageSelectSubtype(subtype) {
 
 function addRequestField(type) {
     const builder = document.getElementById('requestFieldsBuilder');
-    const fieldId = 'field_' + Date.now();
+    const fieldId = 'field_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
     if (type === 'text') {
-        builder.innerHTML += `
-            <div class="field-builder" id="${fieldId}">
-                <div class="field-header">
-                    <span class="field-label">📝 Поле ввода</span>
-                    <span class="field-type">текст</span>
-                </div>
-                <input type="text" id="${fieldId}_label" placeholder="Название поля" style="margin-top:6px;">
-                <label style="color:var(--text-muted); font-size:12px; display:flex; align-items:center; gap:6px; margin-top:4px;">
-                    <input type="checkbox" id="${fieldId}_required"> Обязательное
-                </label>
-                <button class="btn btn-small btn-danger" onclick="removeField('${fieldId}')" style="width:auto; margin-top:6px; padding:4px 12px; font-size:10px;">✕ Удалить</button>
-            </div>
-        `;
+        builder.innerHTML += '<div class="field-builder" id="' + fieldId + '">' +
+            '<div class="field-header">' +
+                '<span class="field-label">📝 Поле ввода</span>' +
+                '<span class="field-type">текст</span>' +
+            '</div>' +
+            '<input type="text" id="' + fieldId + '_label" placeholder="Название поля" style="margin-top:6px;">' +
+            '<label style="color:var(--text-muted); font-size:12px; display:flex; align-items:center; gap:6px; margin-top:4px;">' +
+                '<input type="checkbox" id="' + fieldId + '_required"> Обязательное' +
+            '</label>' +
+            '<button class="btn btn-small btn-danger" onclick="removeField(\'' + fieldId + '\')" style="width:auto; margin-top:6px; padding:4px 12px; font-size:10px;">✕ Удалить</button>' +
+        '</div>';
         addPageFields.push({ id: fieldId, type: 'text' });
     } else if (type === 'select') {
-        builder.innerHTML += `
-            <div class="field-builder" id="${fieldId}">
-                <div class="field-header">
-                    <span class="field-label">📋 Выбор</span>
-                    <span class="field-type">выбор</span>
-                </div>
-                <input type="text" id="${fieldId}_label" placeholder="Название поля" style="margin-top:6px;">
-                <input type="text" id="${fieldId}_options" placeholder="Варианты через запятую" style="margin-top:4px;">
-                <label style="color:var(--text-muted); font-size:12px; display:flex; align-items:center; gap:6px; margin-top:4px;">
-                    <input type="checkbox" id="${fieldId}_required"> Обязательное
-                </label>
-                <button class="btn btn-small btn-danger" onclick="removeField('${fieldId}')" style="width:auto; margin-top:6px; padding:4px 12px; font-size:10px;">✕ Удалить</button>
-            </div>
-        `;
+        builder.innerHTML += '<div class="field-builder" id="' + fieldId + '">' +
+            '<div class="field-header">' +
+                '<span class="field-label">📋 Выбор</span>' +
+                '<span class="field-type">выбор</span>' +
+            '</div>' +
+            '<input type="text" id="' + fieldId + '_label" placeholder="Название поля" style="margin-top:6px;">' +
+            '<input type="text" id="' + fieldId + '_options" placeholder="Варианты через запятую" style="margin-top:4px;">' +
+            '<label style="color:var(--text-muted); font-size:12px; display:flex; align-items:center; gap:6px; margin-top:4px;">' +
+                '<input type="checkbox" id="' + fieldId + '_required"> Обязательное' +
+            '</label>' +
+            '<button class="btn btn-small btn-danger" onclick="removeField(\'' + fieldId + '\')" style="width:auto; margin-top:6px; padding:4px 12px; font-size:10px;">✕ Удалить</button>' +
+        '</div>';
         addPageFields.push({ id: fieldId, type: 'select' });
     }
 }
@@ -3198,8 +3176,8 @@ async function publishNewPage() {
         await savePagesDB();
         result.textContent = '✅ Раздел опубликован!';
         result.className = 'result-msg success';
-        addHistory(currentUser.id, 'Создание раздела', `Создан раздел "${name}"`);
-        showToast('✅ РАЗДЕЛ ОПУБЛИКОВАН', `Раздел "${name}" создан`, 'info');
+        addHistory(currentUser.id, 'Создание раздела', 'Создан раздел "' + name + '"');
+        showToast('✅ РАЗДЕЛ ОПУБЛИКОВАН', 'Раздел "' + name + '" создан', 'info');
         loadDynamicPages();
         loadAdminPagesManagement();
         setTimeout(() => closeAddPageModal(), 1500);
@@ -3207,7 +3185,7 @@ async function publishNewPage() {
         const fields = [];
         let allValid = true;
         let errorMsg = '';
-        addPageFields.forEach(f => {
+        addPageFields.forEach(function(f) {
             const labelEl = document.getElementById(f.id + '_label');
             const label = labelEl ? labelEl.value.trim() : '';
             if (!label) { allValid = false; errorMsg = 'Заполните названия всех полей'; return; }
@@ -3263,8 +3241,8 @@ async function publishNewPage() {
         await savePagesDB();
         result.textContent = '✅ Раздел опубликован!';
         result.className = 'result-msg success';
-        addHistory(currentUser.id, 'Создание раздела', `Создан раздел "${name}" с заявками`);
-        showToast('✅ РАЗДЕЛ ОПУБЛИКОВАН', `Раздел "${name}" создан`, 'info');
+        addHistory(currentUser.id, 'Создание раздела', 'Создан раздел "' + name + '" с заявками');
+        showToast('✅ РАЗДЕЛ ОПУБЛИКОВАН', 'Раздел "' + name + '" создан', 'info');
         loadDynamicPages();
         loadAdminPagesManagement();
         setTimeout(() => closeAddPageModal(), 1500);
@@ -3293,8 +3271,8 @@ async function saveEditContent() {
     await saveDB();
     res.textContent = '✅ Информация обновлена';
     res.className = 'result-msg success';
-    addHistory(currentUser.id, 'Изменение информации', `Обновлён раздел: ${section}`);
-    showToast('✅ ИНФОРМАЦИЯ ОБНОВЛЕНА', `Раздел ${section} обновлён`, 'info');
+    addHistory(currentUser.id, 'Изменение информации', 'Обновлён раздел: ' + section);
+    showToast('✅ ИНФОРМАЦИЯ ОБНОВЛЕНА', 'Раздел ' + section + ' обновлён', 'info');
     loadSiteContent();
     loadEditContent();
 }
@@ -3307,11 +3285,11 @@ function loadFamiliesAdmin() {
         alliesContainer.innerHTML = '<p style="color:var(--text-muted);">Нет союзников</p>';
     } else {
         let html = '';
-        db.allies.forEach((a, i) => {
-            html += `<div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid var(--border-color);">
-                <span style="color:var(--text-secondary);">${a}</span>
-                <button class="btn btn-small btn-danger" onclick="removeAlly(${i})" style="width:auto; padding:2px 10px; font-size:10px;">✕</button>
-            </div>`;
+        db.allies.forEach(function(a, i) {
+            html += '<div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid var(--border-color);">' +
+                '<span style="color:var(--text-secondary);">' + a + '</span>' +
+                '<button class="btn btn-small btn-danger" onclick="removeAlly(' + i + ')" style="width:auto; padding:2px 10px; font-size:10px;">✕</button>' +
+            '</div>';
         });
         alliesContainer.innerHTML = html;
     }
@@ -3320,11 +3298,11 @@ function loadFamiliesAdmin() {
         enemiesContainer.innerHTML = '<p style="color:var(--text-muted);">Нет недружественных семей</p>';
     } else {
         let html = '';
-        db.enemies.forEach((e, i) => {
-            html += `<div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid var(--border-color);">
-                <span style="color:var(--text-secondary);">${e}</span>
-                <button class="btn btn-small btn-danger" onclick="removeEnemy(${i})" style="width:auto; padding:2px 10px; font-size:10px;">✕</button>
-            </div>`;
+        db.enemies.forEach(function(e, i) {
+            html += '<div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid var(--border-color);">' +
+                '<span style="color:var(--text-secondary);">' + e + '</span>' +
+                '<button class="btn btn-small btn-danger" onclick="removeEnemy(' + i + ')" style="width:auto; padding:2px 10px; font-size:10px;">✕</button>' +
+            '</div>';
         });
         enemiesContainer.innerHTML = html;
     }
@@ -3340,8 +3318,8 @@ async function addAlly() {
     document.getElementById('newAlly').value = '';
     loadFamiliesAdmin();
     loadFamiliesDisplay();
-    addHistory(currentUser.id, 'Добавление союзника', `Добавлена семья: ${name}`);
-    showToast('✅ ДОБАВЛЕНО', `Семья ${name} добавлена в союзники`, 'info');
+    addHistory(currentUser.id, 'Добавление союзника', 'Добавлена семья: ' + name);
+    showToast('✅ ДОБАВЛЕНО', 'Семья ' + name + ' добавлена в союзники', 'info');
 }
 
 async function removeAlly(index) {
@@ -3351,8 +3329,8 @@ async function removeAlly(index) {
     await saveDB();
     loadFamiliesAdmin();
     loadFamiliesDisplay();
-    addHistory(currentUser.id, 'Удаление союзника', `Удалена семья: ${name}`);
-    showToast('✅ УДАЛЕНО', `Семья ${name} удалена из союзников`, 'info');
+    addHistory(currentUser.id, 'Удаление союзника', 'Удалена семья: ' + name);
+    showToast('✅ УДАЛЕНО', 'Семья ' + name + ' удалена из союзников', 'info');
 }
 
 async function addEnemy() {
@@ -3365,8 +3343,8 @@ async function addEnemy() {
     document.getElementById('newEnemy').value = '';
     loadFamiliesAdmin();
     loadFamiliesDisplay();
-    addHistory(currentUser.id, 'Добавление врага', `Добавлена семья: ${name}`);
-    showToast('✅ ДОБАВЛЕНО', `Семья ${name} добавлена в недружественные', 'info');
+    addHistory(currentUser.id, 'Добавление врага', 'Добавлена семья: ' + name);
+    showToast('✅ ДОБАВЛЕНО', 'Семья ' + name + ' добавлена в недружественные', 'info');
 }
 
 async function removeEnemy(index) {
@@ -3376,13 +3354,21 @@ async function removeEnemy(index) {
     await saveDB();
     loadFamiliesAdmin();
     loadFamiliesDisplay();
-    addHistory(currentUser.id, 'Удаление врага', `Удалена семья: ${name}`);
-    showToast('✅ УДАЛЕНО', `Семья ${name} удалена из недружественных', 'info');
+    addHistory(currentUser.id, 'Удаление врага', 'Удалена семья: ' + name);
+    showToast('✅ УДАЛЕНО', 'Семья ' + name + ' удалена из недружественных', 'info');
+}
+
+function closeNotifyModal() {
+    document.getElementById('violationNotifyModal').classList.remove('active');
+}
+
+function closeResolvedModal() {
+    document.getElementById('violationResolvedModal').classList.remove('active');
 }
 
 document.getElementById('editSection').addEventListener('change', loadEditContent);
 
-setTimeout(() => {
+setTimeout(function() {
     document.getElementById('splashScreen').style.display = 'none';
     init();
 }, 3500);
